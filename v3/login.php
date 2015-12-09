@@ -39,8 +39,10 @@ if (!$userInfo) {
 
 //$scoreRank = $gameData->getScoreRank($userId);
 // $loginRank = $gameData->getLoginRank($userId);
+
 $reward = $gameData->getReward($userId);
 $selfScoreRank = $gameData->getSelfScoreRank($userId);
+
 /*
 $reward = array ();
 $item = rand(1,4);

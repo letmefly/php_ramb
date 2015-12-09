@@ -6,7 +6,7 @@ $registerInfo = helper_receiveMsg();
 $userId = $registerInfo['userId'];
 
 $gameData = new GameData();
-$yesterdayRank = $gameData->getLastdayRank($userId);
+$yesterdayRank = $gameData->getLastDayRank($userId);
 if (!$yesterdayRank) {
 	helper_sendMsg(array ('ret' => 'error'));
 	exit();

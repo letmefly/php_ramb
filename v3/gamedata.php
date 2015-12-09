@@ -1,6 +1,6 @@
 <?php
 include_once 'helper.php';
-include(dirname(__FILE__) . '/SSDB.php');
+include_once 'SSDB.php';
 include_once 'db.php';
 
 ini_set('date.timezone','Asia/Shanghai');
@@ -41,8 +41,8 @@ class GameData {
 		if ($dataArray['ICON'] == "") {
 			$dataArray['ICON'] = '0';
 		}
-		$this->ssdb->hSet($this->USER_HASH, $this->PREFIX.$userId, json_encode($dataArray));
-		$this->ssdb->sAdd($this->NAMELIST, $row['NAME']);
+		$this->ssdb->hset($this->USER_HASH, $this->PREFIX.$userId, json_encode($dataArray));
+		$this->ssdb->hset($this->NAMELIST, $row['NAME'], 1);
 	}
 
 	public function userNameCheck($userName) {
@@ -50,12 +50,12 @@ class GameData {
 		if($userName == '') {
 			return array ('code' => 1002);
 		}
-		if ($this->ssdb->sIsMember($NAMELIST, $userName)) {
+		if ($this->ssdb->hget($NAMELIST, $userName)) {
 			return array ('code' => 1001);
 		}
 		$row = $this->db->selectUserByName(array('USERNAME' => $userName));
 		if ($row) {
-			$this->redis->sAdd($this->NAMELIST, $row['NAME']);
+			$this->ssdb->hset($this->NAMELIST, $row['NAME'], 1);
 			return array ('code' => 1001);
 		}
 		
@@ -120,7 +120,7 @@ class GameData {
 			$updateInfo['MILITARY'] = $military;
 		}
 		$updateInfo['SHIPTYPE_WILL_BE_UNSET'] = $shipType;
-		$userScore = $this->ssdb->zScore(todayRank(), $userId);
+		$userScore = $this->ssdb->zget($this->todayRank(), $userId);
 		if ($updateInfo['SCORE'] <= $userScore) {
 			return 2001;
 		}
@@ -140,23 +140,23 @@ class GameData {
 		foreach ($updateInfo as $key => $value) {
 			$userInfo[$key] = $value;
 		}
-		$this->ssdb->hSet($this->USER_HASH, $this->PREFIX.$userId, json_encode($userInfo));
+		$this->ssdb->hset($this->USER_HASH, $this->PREFIX.$userId, json_encode($userInfo));
 
 		// 2. update score rank memchache
 		if ($updateInfo['SCORE']) {
-			$this->ssdb->zAdd(todayRank(), intval($updateInfo['SCORE']), $userId);
+			$this->ssdb->zset($this->todayRank(), $userId, intval($updateInfo['SCORE']));
 		}
 	}
 
 	public function getUserInfo($userId) {
-		$userInfoStr = $this->ssdb->hGet($this->USER_HASH, $this->PREFIX.$userId);
+		$userInfoStr = $this->ssdb->hget($this->USER_HASH, $this->PREFIX.$userId);
 		if ($userInfoStr) {
 			return json_decode($userInfoStr, true);
 		}
 		$row = $this->db->selectUser(array('USERID' => $userId));
 		if ($row) {
-			$this->redis->hSet($this->USER_HASH, $this->PREFIX . $userId, json_encode($row));
-			$this->redis->sAdd($this->NAMELIST, $row['NAME']);
+			$this->ssdb->hset($this->USER_HASH, $this->PREFIX . $userId, json_encode($row));
+			$this->ssdb->hset($this->NAMELIST, $row['NAME'], 1);
 		}
 		return $row;
 	}
@@ -166,20 +166,20 @@ class GameData {
 		return $this->getScoreRankByName($rankName, $userId);
 	}
 
-	public function getLastdayRank($userId) {
+	public function getLastDayRank($userId) {
 		$rankName = $this->lastNDayRank(1);
 		return $this->getScoreRankByName($rankName, $userId);
 	}
 
 	private function getScoreRankByName($rankName, $userId) {
         $rankList = array();
-        $userList = $this->ssdb->zRevRange($rankName, 0, 98, true);
+        $userList = $this->ssdb->zrrange($rankName, 0, 98);
 		$rankNum = 0;
         foreach ($userList as $key => $value) {
 			if (!$key) {continue;}
 			$rankNum = $rankNum + 1;
 	        $userInfo = $this->getUserInfo($key);
-	        $userScore = $this->ssdb->zScore($rankName, $key);
+	        $userScore = $this->ssdb->zget($rankName, $key);
 	        $rankInfo = array(
                 "uid" => $userInfo['USERID'],
                 "name" => $userInfo['NAME'],
@@ -195,11 +195,11 @@ class GameData {
         }
         if (!isset($userList[$userId])) {
             $userInfo = $this->getUserInfo($userId);
-            $userScore = $this->ssdb->zScore($rankName, $userId);
-            $rankNum = $this->ssdb->zRevRank($rankName, $userId) + 1;
+            $userScore = $this->ssdb->zget($rankName, $userId);
+            $rankNum = $this->ssdb->zrrank($rankName, $userId) + 1;
             if (!$userScore) {
                 $userScore = 0;
-                $rankNum = $this->ssdb->zSize($rankName) + 1;
+                $rankNum = $this->ssdb->zsize($rankName) + 1;
             }
             $rankInfo = array(
                 "uid" => $userInfo['USERID'],
@@ -220,11 +220,11 @@ class GameData {
 	public function getSelfScoreRank($userId) {
 		$rankName = $this->todayRank();
 		$userInfo = $this->getUserInfo($userId);
-		$userScore = $this->ssdb->zScore($rankName, $userId);
-		$rankNum = $this->ssdb->zRevRank($rankName, $userId) + 1;
+		$userScore = $this->ssdb->zget($rankName, $userId);
+		$rankNum = $this->ssdb->zrrank($rankName, $userId) + 1;
 		if (!$userScore) {
             $userScore = 0;
-            $rankNum = $this->ssdb->zSize($rankName) + 1;
+            $rankNum = $this->ssdb->zsize($rankName) + 1;
         }
 		if(!$userInfo['SHIPTYPE_WILL_BE_UNSET']) {
 			$userInfo['SHIPTYPE_WILL_BE_UNSET'] = 0;
@@ -253,7 +253,7 @@ class GameData {
 		if ($day != $lastDay) {
 			$updateInfo = array("USERID" => $userId, 'LASTLOGINDAY' => $day);
 			$this->updateUserInfo($updateInfo);
-			$rankInfo = $this->getLastRank($userId, ($lastDay)%7+1);
+			$rankInfo = $this->getLastDayRank($userId);
 			foreach ($rankInfo as $value) {
 				if ($value['uid'] == $userId) {
 					$rank = $value['rank'];

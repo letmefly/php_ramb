@@ -7,14 +7,13 @@ function helper_log($str) {
 }
 
 function helper_receiveMsg() {
-
 	$postdata = file_get_contents("php://input");
 	if ($postdata == '') {
 		helper_log('[helper] post data is blank..');
 		return '';
 	}
 
-    	$private_key = "bnhgdcctuiphnfrkn112512"; 	
+    $private_key = "bnhgdcctuiphnfrkn112512"; 	
 	$msgRaw = json_decode($postdata, true);
 	$msgJson = $msgRaw['msg'];
 	$msgSigh = $msgRaw['sign'];
@@ -26,7 +25,6 @@ function helper_receiveMsg() {
 	}
 	
 	$msg64 = base64_decode($msgJson);
-	
 	$msg = json_decode($msg64, true);
 
 	return $msg;
