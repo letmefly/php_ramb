@@ -19,7 +19,7 @@ class GameData {
 
 	function __construct() {
 		$this->db = new DB();
-		$this->ssdb = new SimpleSSDB('127.0.0.1', 8888);
+		$this->ssdb = new SimpleSSDB('127.0.0.1', 8880);
 	}
 	function __destruct() {
 	}
