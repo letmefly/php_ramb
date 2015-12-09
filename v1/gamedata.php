@@ -41,7 +41,7 @@ class GameData {
 		if ($dataArray['ICON'] == "") {
 			$dataArray['ICON'] = '0';
 		}
-		$this->ssdb->hset($this->USER_HASH, $this->PREFIX.$userId, json_encode($dataArray));
+		$this->ssdb->hset($this->USER_HASH, $this->PREFIX.$userInfo['userId'], json_encode($dataArray));
 		$this->ssdb->hset($this->NAMELIST, $row['NAME'], 1);
 	}
 

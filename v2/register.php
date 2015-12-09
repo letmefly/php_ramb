@@ -21,6 +21,7 @@ if (!$gameData) {
 //helper_sendMsg(array('ret' => 'GameData configuration error 2'));exit();
 
 $userInfo = $gameData->getUserInfo($userId);
+
 // not exist, create a new user
 $reward = null;
 if (!$userInfo) {
