@@ -9,9 +9,8 @@ $gameData = new GameData();
 $day = intval(date("w"));
 if ($day == 0) {$day = 7;}
 //$yesterdayRank = $gameData->getLastRank($userId, $day);
-$yesterdayRank = $gameData->getLastDayRank_redis($userId);
+$yesterdayRank = $gameData->getLastDayRank($userId);
 if (!$yesterdayRank) {
-
 	helper_sendMsg(array ('ret' => 'error'));
 	exit();
 }
