@@ -243,9 +243,6 @@ class GameData {
 
 	public function getReward($userId) {
 		date_default_timezone_set("PRC");
-		if ($this->ssdb->get($FRESH_RECORD) != date("Ymd")) {
-			return null;
-		}
 		$userInfo = $this->getUserInfo($userId);
 		$day = intval(date("w"));
 		if ($day == 0) {$day = 7;}
